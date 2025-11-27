@@ -34,6 +34,16 @@ This implementation follows the step-by-step logic used in the initial experimen
 Both functions produce the same type of output (an inverted fault counter), but the second is more explicit in how intermediate steps are constructed.
 
 ----------------------------------------------------
+## Related publication
+
+Amorelli Y. et al. (2025) — *Predictive Maintenance for Water Supply Networks:  
+Advanced Expert System Models for Enhanced Water Resource Management and Monitoring.*
+
+IEEE International Workshop on Metrology for Living Environment, Venice 2025.  
+First Author. Published on IEEE Xplore.  
+DOI: https://doi.org/10.1109/MetroLivEnv64961.2025.11107070
+
+----------------------------------------------------
 ## Repository structure
 
 ```text
