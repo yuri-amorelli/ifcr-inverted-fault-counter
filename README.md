@@ -1,6 +1,6 @@
-# IFCR – Inverted Fault Counter Reconstruction
+# IFCR – Inverted Fault Counter Regressor
 
-This repository contains a general-purpose implementation of the **IFCR (Inverted Fault Counter Reconstruction)** algorithm I developed during my research on predictive maintenance.
+This repository contains a general-purpose implementation of the **IFCR (Inverted Fault Counter Regressor)** algorithm I developed during my research on predictive maintenance.
 
 The goal of IFCR is to generate a *distance-to-next-fault* counter from any dataset containing an event or fault column. This counter can then be used as a supervised-learning target for regression models, including non-sequential methods such as decision trees.
 
