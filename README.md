@@ -1,60 +1,199 @@
-# IFCR – Inverted Fault Counter Regressor
+# IFCR — Inverted Fault Counter Regressor
 
-(A practical labeling tool for predictive maintenance pipelines)
+**A novel event-driven labeling algorithm for Remaining Useful Life (RUL) estimation in predictive maintenance.**
 
-This repository contains a general-purpose implementation of IFCR (Inverted Fault Counter Regressor), a lightweight and practical labeling algorithm developed to support predictive maintenance workflows on real-world industrial IoT data.
+[![IEEE](https://img.shields.io/badge/IEEE-Published-blue)](https://doi.org/10.1109/MetroLivEnv64961.2025.11107070)
+[![Python](https://img.shields.io/badge/Python-3.9+-green)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-IFCR addresses a common problem in operational datasets: failures are often logged explicitly, but labels suitable for supervised regression models (e.g. Remaining Useful Life–like targets) are missing.
-The algorithm transforms raw fault or event logs into a distance-to-next-fault counter that can be directly used as a regression target, including with non-sequential models such as decision trees.
+---
 
-----------------------------------------------------
+## What is IFCR?
 
-## What IFCR does
+IFCR solves a fundamental problem in predictive maintenance: **how do you train a supervised model for RUL estimation when your dataset has no labels — only raw fault logs?**
 
-- Reads raw sensor or event data
-- Sorts and aligns rows by timestamp
-- Detects fault events from a binary indicator column
-- Reconstructs a counter that resets to 0 on each fault and grows when moving backwards in time
-- Outputs a usable regression label for supervised ML models (e.g. RUL-like targets)
+The state of the art typically addresses this with deep learning architectures (LSTM + self-attention), survival analysis with complex probabilistic assumptions, or AutoML frameworks that sacrifice interpretability. IFCR takes a different approach: **reconstruct RUL regression targets directly from fault counters**, enabling supervised learning on previously unlabelable datasets while maintaining full interpretability.
 
-The algorithm adapts to different dataset structures and fault semantics, making it suitable for a wide range of predictive maintenance applications.
+As demonstrated in the IEEE publication, this simple and transparent method achieves **R² = 0.99** and **hold-out deviation below 2.5%** — matching or outperforming complex deep learning baselines.
 
-----------------------------------------------------
-## Implementations
+---
 
-Two implementations are provided:
+## Publication
 
-1. build_ifcr_counter (recommended)
+> Amorelli, Y. et al. (2025). *Predictive Maintenance for Water Supply Networks: Advanced Expert System Models for Enhanced Water Resource Management and Monitoring.*  
+> IEEE International Workshop on Metrology for Living Environment (MetroLivEnv), Venice, 2025. **First Author.**  
+> DOI: [https://doi.org/10.1109/MetroLivEnv64961.2025.11107070](https://doi.org/10.1109/MetroLivEnv64961.2025.11107070)
 
-A clean and concise implementation suitable for most use cases.
-This version prioritizes clarity and maintainability, making it ideal for integration into existing data pipelines and production workflows.
+---
 
-2. build_ifcr_counter_segmented
+## How It Works
 
-A version closer to the original research prototype.
-It follows the step-by-step logic used in the initial experimental pipeline, including dataset segmentation and backward traversal within each segment.
+IFCR works in three steps:
 
-Both implementations produce the same type of output (an inverted fault counter); the second is simply more explicit in how intermediate steps are constructed.
+1. **INDEX column** — Create an incremental counter that resets to 0 at each fault event
+2. **Interval Reversal** — Invert each interval between consecutive faults, so the counter counts *down* to the next fault
+3. **RUL column** — The inverted array becomes the regression target: each row reports how many recordings remain before the next fault
 
-----------------------------------------------------
-## Related publication
+This transformation makes the temporal relationship between sensor readings and fault occurrence **explicit and learnable** by any supervised regression algorithm.
 
-Amorelli Y. et al. (2025) — *Predictive Maintenance for Water Supply Networks:  
-Advanced Expert System Models for Enhanced Water Resource Management and Monitoring.*
+```
+Raw data:     [0, 1, 2, 3, FAULT, 0, 1, 2, FAULT, ...]
+INDEX:        [0, 1, 2, 3,   0,   0, 1, 2,   0,   ...]
+RUL (IFCR):   [3, 2, 1, 0,   0,   2, 1, 0,   0,   ...]
+```
 
-IEEE International Workshop on Metrology for Living Environment, Venice 2025.  
-First Author. Published on IEEE Xplore.  
-DOI: https://doi.org/10.1109/MetroLivEnv64961.2025.11107070
+---
 
-----------------------------------------------------
-## Repository structure
+## Results
 
-```text
-ifcr/
-    __init__.py
-    ifcr.py               # main IFCR implementations
-examples/
-    data_example.csv
-    simple_example.py     # minimal usage example
-README.md
-LICENSE
+Validated on a real industrial dataset: water pump monitored by **52 sensors** over **one year**, generating **220,000+ minute-by-minute readings** with **7 documented fault events**.
+
+### Train/Test Split
+
+| Model | RMSE | MAE | R² |
+|---|---|---|---|
+| DecisionTreeRegressor | 1294.0 | 186.0 | **0.99** |
+| XGBRegressor | 823.91 | 196.19 | **0.99** |
+
+### K-Fold Cross Validation (MAE)
+
+| Model | K=5 | K=10 |
+|---|---|---|
+| DecisionTreeRegressor | ~187 | ~186 |
+| XGBRegressor | ~205 | ~201 |
+
+### Hold-Out Validation
+
+| Prediction Rows | Real RUL | DT Predicted | XGB Predicted | DT Error |
+|---|---|---|---|---|
+| [70000:70500] | 7,539 | ~7,540 | ~7,546 | **0.02%** |
+| [30000:30500] | 39,317 | ~39,068 | ~39,073 | **0.63%** |
+| [18000:18500] | 6,090 | ~7,235 | ~7,025 | ~18% |
+
+> The third configuration removes a smaller training segment (~7,000 rows), resulting in less stable predictions. This is expected behaviour and demonstrates that IFCR performs better with more training context available.
+
+---
+
+## Dataset
+
+The demonstration uses the publicly available **Pump Sensor Data** from Kaggle:  
+[https://www.kaggle.com/datasets/nphantawee/pump-sensor-data](https://www.kaggle.com/datasets/nphantawee/pump-sensor-data)
+
+Download `sensor.csv` and place it in the same directory as the notebook before running.
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/yuri-amorelli/ifcr-inverted-fault-counter
+cd ifcr-inverted-fault-counter
+pip install -r requirements.txt
+```
+
+### Requirements
+
+```
+pandas
+numpy
+scikit-learn
+xgboost
+matplotlib
+jupyter
+```
+
+---
+
+## Usage
+
+### Run the demonstration notebook
+
+```bash
+jupyter notebook IFCR_demonstration.ipynb
+```
+
+The notebook walks through the complete pipeline:
+1. Loading and preprocessing the dataset
+2. Applying IFCR to generate RUL labels
+3. Training DecisionTree and XGBoost regressors
+4. Evaluating with K-fold cross-validation
+5. Hold-out validation replicating publication results
+6. Operational traffic light dashboard
+
+### Use IFCR on your own dataset
+
+Your dataset needs:
+- At least one column with fault status (e.g., `machine_status`)
+- At least one documented fault event
+
+```python
+import pandas as pd
+import numpy as np
+
+df = pd.read_csv('your_dataset.csv')
+
+# Encode fault column as binary (1 = fault, 0 = normal)
+df['fault'] = (df['machine_status'] == 'BROKEN').astype(int)
+
+# Apply IFCR
+n, m = 0, 0
+for index, row in df.iterrows():
+    df.at[index, 'INDEX'] = n
+    if df.iloc[m]['fault'] > 0:
+        n = 0
+    df.at[index, 'INDEX'] = n
+    n += 1
+    m += 1
+
+# Invert intervals to generate RUL
+rul_array = df['INDEX'].to_numpy()
+quasiRUL, RUL = [], []
+k, L = 0, len(rul_array) - 1
+
+while k < L:
+    if rul_array[k] != 0 and rul_array[k+1] == 0:
+        quasiRUL.append(rul_array[k])
+        RUL.extend(reversed(quasiRUL))
+        k += 1
+        quasiRUL = []
+    else:
+        quasiRUL.append(rul_array[k])
+        k += 1
+    if k == L:
+        quasiRUL.append(rul_array[k])
+        RUL.extend(reversed(quasiRUL))
+
+df['RUL'] = RUL
+
+# Train your model
+from sklearn.tree import DecisionTreeRegressor
+X = df.drop(columns=['RUL', 'fault', 'INDEX'])
+y = df['RUL']
+model = DecisionTreeRegressor(max_depth=20, min_samples_leaf=2, min_samples_split=7)
+model.fit(X, y)
+```
+
+---
+
+## Key Advantages
+
+- **No probabilistic assumptions** — unlike survival analysis
+- **No deep learning required** — simple tree-based models achieve R² = 0.99
+- **Fully interpretable** — feature importance reveals which sensors drive predictions
+- **Generalizable** — requires only a fault status column with at least one fault event
+- **Operational ready** — predictions map directly to actionable maintenance states
+- **For a full methodological analysis including temporal leakage discussion and cross-cycle generalization limits, see Part 5 of the notebook**
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+## Author
+
+**Yuri Amorelli**  
+Machine Learning Engineer | Research Associate, KORE University of Enna  
+[GitHub](https://github.com/yuri-amorelli) · [IEEE Publication](https://doi.org/10.1109/MetroLivEnv64961.2025.11107070)
