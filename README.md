@@ -70,7 +70,7 @@ Validated on a real industrial dataset: water pump monitored by **52 sensors** o
 | [30000:30500] | 39,317 | ~39,068 | ~39,073 | **0.63%** |
 | [18000:18500] | 6,090 | ~7,235 | ~7,025 | ~18% |
 
-> The third configuration shows higher deviation (~18%). See Part 5 for a full methodological analysis of generalization limits.
+> The third configuration shows higher deviation (~18%). See Part 5 of IFCR_demonstration.ipynb for a full methodological analysis of generalization limits.
 
 ---
 
