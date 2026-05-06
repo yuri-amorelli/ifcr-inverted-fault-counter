@@ -70,7 +70,7 @@ Validated on a real industrial dataset: water pump monitored by **52 sensors** o
 | [30000:30500] | 39,317 | ~39,068 | ~39,073 | **0.63%** |
 | [18000:18500] | 6,090 | ~7,235 | ~7,025 | ~18% |
 
-> The third configuration removes a smaller training segment (~7,000 rows), resulting in less stable predictions. This is expected behaviour and demonstrates that IFCR performs better with more training context available.
+> The third configuration shows higher deviation (~18%). See Part 5 for a full methodological analysis of generalization limits.
 
 ---
 
