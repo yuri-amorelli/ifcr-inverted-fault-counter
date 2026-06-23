@@ -178,9 +178,9 @@ model.fit(X, y)
 ## Key Advantages
 
 - **No probabilistic assumptions** — unlike survival analysis
-- **No deep learning required** — simple tree-based models achieve R² = 0.99
+- **No deep learning required** — simple tree-based models achieve 0.02%-0.63% hold-out error on unseen data within a known failure cycle
 - **Fully interpretable** — feature importance reveals which sensors drive predictions
-- **Generalizable** — requires only a fault status column with at least one fault event
+- **Broadly applicable** — works on any dataset with a fault status column and at least one documented fault event (cross-cycle generalization is dataset-dependent, see Part 5)
 - **Operational ready** — predictions map directly to actionable maintenance states
 - **For a full methodological analysis including temporal leakage discussion and cross-cycle generalization limits, see Part 5 of the notebook**
 
