@@ -15,6 +15,7 @@ IFCR solves a fundamental problem in predictive maintenance: **how do you train 
 The state of the art typically addresses this with deep learning architectures (LSTM + self-attention), survival analysis with complex probabilistic assumptions, or AutoML frameworks that sacrifice interpretability. IFCR takes a different approach: **reconstruct RUL regression targets directly from fault counters**, enabling supervised learning on previously unlabelable datasets while maintaining full interpretability.
 
 Validated with hold-out testing on unseen data: 0.02%-0.63% prediction error in two out of three configurations. Cross-cycle generalization to entirely new failure events remains an open challenge, documented transparently in Part 5.
+
 ---
 
 ## Publication
