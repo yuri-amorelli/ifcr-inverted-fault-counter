@@ -1,4 +1,4 @@
-# IFCR — Inverted Fault Counter Regressor
+# IFCR — Inverted Fault Count Regression
 
 **A novel event-driven labeling algorithm for Remaining Useful Life (RUL) estimation in predictive maintenance.**
 
@@ -10,11 +10,16 @@
 
 ## What is IFCR?
 
+<img width="1150" height="471" alt="Screenshot 2026-07-06 021327" src="https://github.com/user-attachments/assets/d4394fe6-210f-4119-908c-8778dee6a757" />
+
 IFCR solves a fundamental problem in predictive maintenance: **how do you train a supervised model for RUL estimation when your dataset has no labels — only raw fault logs?**
 
 The state of the art typically addresses this with deep learning architectures (LSTM + self-attention), survival analysis with complex probabilistic assumptions, or AutoML frameworks that sacrifice interpretability. IFCR takes a different approach: **reconstruct RUL regression targets directly from fault counters**, enabling supervised learning on previously unlabelable datasets while maintaining full interpretability.
 
-Validated with hold-out testing on unseen data: 0.02%-0.63% prediction error in two out of three configurations. Cross-cycle generalization to entirely new failure events remains an open challenge, documented transparently in Part 5.
+Validated with hold-out testing on unseen data: 0.02%–0.63% prediction error in two out of three configurations. Cross-cycle generalization to entirely new failure events remains an open challenge, documented transparently in Part 5.
+
+<!-- IMAGE: inserire qui il grafico principale (scatter actual-vs-predicted o dashboard semaforica) -->
+<!-- ![IFCR results](docs/img/NOME_IMMAGINE.png) -->
 
 ---
 
@@ -54,6 +59,8 @@ Validated on a real industrial dataset: water pump monitored by **52 sensors** o
 |---|---|---|---|
 | DecisionTreeRegressor | 1294.0 | 186.0 | **0.99** |
 | XGBRegressor | 823.91 | 196.19 | **0.99** |
+
+> **Caveat:** random-split metrics on minute-by-minute data are optimistic due to temporal adjacency between train and test rows. The hold-out validation below — entire future segments withheld — is the honest benchmark. See Part 5 of the notebook for the full temporal-leakage discussion.
 
 ### K-Fold Cross Validation (MAE)
 
@@ -128,61 +135,45 @@ Your dataset needs:
 
 ```python
 import pandas as pd
-import numpy as np
+from sklearn.tree import DecisionTreeRegressor
 
 df = pd.read_csv('your_dataset.csv')
 
 # Encode fault column as binary (1 = fault, 0 = normal)
 df['fault'] = (df['machine_status'] == 'BROKEN').astype(int)
 
-# Apply IFCR
-n, m = 0, 0
-for index, row in df.iterrows():
-    df.at[index, 'INDEX'] = n
-    if df.iloc[m]['fault'] > 0:
-        n = 0
-    df.at[index, 'INDEX'] = n
-    n += 1
-    m += 1
+# Apply IFCR (vectorized):
+# each fault starts a new segment; within each segment, count down to the next fault
+segment = df['fault'].cumsum()
+df['RUL'] = df.groupby(segment).cumcount(ascending=False)
 
-# Invert intervals to generate RUL
-rul_array = df['INDEX'].to_numpy()
-quasiRUL, RUL = [], []
-k, L = 0, len(rul_array) - 1
+# Rows after the last fault have no future fault event:
+# their RUL is undefined and they should be excluded from training
+last_fault_idx = df.index[df['fault'] == 1].max()
+train_df = df.loc[:last_fault_idx]
 
-while k < L:
-    if rul_array[k] != 0 and rul_array[k+1] == 0:
-        quasiRUL.append(rul_array[k])
-        RUL.extend(reversed(quasiRUL))
-        k += 1
-        quasiRUL = []
-    else:
-        quasiRUL.append(rul_array[k])
-        k += 1
-    if k == L:
-        quasiRUL.append(rul_array[k])
-        RUL.extend(reversed(quasiRUL))
 
-df['RUL'] = RUL
 
 # Train your model
-from sklearn.tree import DecisionTreeRegressor
-X = df.drop(columns=['RUL', 'fault', 'INDEX'])
-y = df['RUL']
+X = train_df.drop(columns=['RUL', 'fault', 'machine_status'])
+y = train_df['RUL']
 model = DecisionTreeRegressor(max_depth=20, min_samples_leaf=2, min_samples_split=7)
 model.fit(X, y)
 ```
+
+The vectorized labeling runs in milliseconds on 220K+ rows and correctly handles edge cases (consecutive fault rows) that a naive row-by-row implementation mislabels.
 
 ---
 
 ## Key Advantages
 
 - **No probabilistic assumptions** — unlike survival analysis
-- **No deep learning required** — simple tree-based models achieve 0.02%-0.63% hold-out error on unseen data within a known failure cycle
+- **No deep learning required** — simple tree-based models achieve 0.02%–0.63% hold-out error on unseen data within a known failure cycle
 - **Fully interpretable** — feature importance reveals which sensors drive predictions
 - **Broadly applicable** — works on any dataset with a fault status column and at least one documented fault event (cross-cycle generalization is dataset-dependent, see Part 5)
 - **Operational ready** — predictions map directly to actionable maintenance states
-- **For a full methodological analysis including temporal leakage discussion and cross-cycle generalization limits, see Part 5 of the notebook**
+
+For a full methodological analysis — including the temporal-leakage discussion and cross-cycle generalization limits — see Part 5 of the notebook.
 
 ---
 
@@ -195,5 +186,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 ## Author
 
 **Yuri Amorelli**  
-Machine Learning Engineer | Research Associate, KORE University of Enna  
+Machine Learning Engineer — Predictive Maintenance & RUL Estimation  
 [GitHub](https://github.com/yuri-amorelli) · [IEEE Publication](https://doi.org/10.1109/MetroLivEnv64961.2025.11107070)
